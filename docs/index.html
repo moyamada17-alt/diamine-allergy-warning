@@ -83,6 +83,12 @@
     margin-bottom: 16px;
     line-height: 1.5;
   }
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
   .input-row {
     display: flex;
     align-items: center;
@@ -109,8 +115,45 @@
     box-shadow: 0 0 0 3px rgba(243,156,18,.25);
   }
   .input-row .unit { font-size: 1.1rem; }
-  .input-row button {
-    padding: 14px 24px;
+
+  /* 頻度選択 */
+  .freq-label {
+    font-size: clamp(.88rem, 3vw, 1rem);
+    color: #ccc;
+    margin-bottom: 4px;
+  }
+  .freq-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .freq-options input[type="radio"] {
+    display: none;
+  }
+  .freq-options label {
+    padding: 10px 16px;
+    font-size: clamp(.82rem, 2.8vw, .92rem);
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s, transform .15s;
+    touch-action: manipulation;
+    white-space: nowrap;
+  }
+  .freq-options input[type="radio"]:checked + label {
+    border-color: #f39c12;
+    background: rgba(243,156,18,.15);
+    color: #f39c12;
+    font-weight: 600;
+  }
+  .freq-options label:active {
+    transform: scale(.96);
+  }
+
+  .input-group button {
+    padding: 14px 32px;
     font-size: clamp(1rem, 3.5vw, 1.1rem);
     background: linear-gradient(135deg, var(--red), var(--dark-red));
     color: #fff;
@@ -123,8 +166,8 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  .input-row button:hover,
-  .input-row button:active {
+  .input-group button:hover,
+  .input-group button:active {
     transform: scale(1.04);
     box-shadow: 0 4px 20px rgba(231,76,60,.45);
   }
@@ -271,7 +314,7 @@
   .symptom-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 14px;
   }
   @media (min-width: 480px) {
     .symptom-grid {
@@ -281,10 +324,11 @@
   .symptom-item {
     background: rgba(231,76,60,.1);
     border-radius: 12px;
-    padding: 14px;
+    padding: 0;
     border-left: 4px solid var(--red);
     opacity: 0;
     transform: translateY(10px);
+    overflow: hidden;
   }
   .symptom-item.show {
     animation: fadeUp .4s forwards;
@@ -292,16 +336,28 @@
   @keyframes fadeUp {
     to { opacity: 1; transform: translateY(0); }
   }
-  .symptom-item .icon {
-    font-size: 1.6rem;
-    margin-bottom: 4px;
+  .symptom-illust {
+    width: 100%;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
   }
-  .symptom-item h4 {
+  .symptom-illust svg {
+    width: 100%;
+    height: 100%;
+  }
+  .symptom-body {
+    padding: 12px 14px;
+  }
+  .symptom-body h4 {
     font-size: clamp(.88rem, 3vw, .95rem);
     color: #f5a5a5;
     margin-bottom: 4px;
   }
-  .symptom-item p {
+  .symptom-body p {
     font-size: clamp(.78rem, 2.5vw, .85rem);
     color: #bbb;
     line-height: 1.6;
@@ -467,10 +523,29 @@
 
 <section class="input-section" id="inputSection">
   <label>毛染めを始めた年齢（または始める予定の年齢）を<br>入力してください</label>
-  <div class="input-row">
-    <input type="number" id="startAge" inputmode="numeric" pattern="[0-9]*"
-           min="10" max="80" placeholder="25" enterkeyhint="go">
-    <span class="unit">歳</span>
+  <div class="input-group">
+    <div class="input-row">
+      <input type="number" id="startAge" inputmode="numeric" pattern="[0-9]*"
+             min="10" max="80" placeholder="25" enterkeyhint="go">
+      <span class="unit">歳</span>
+    </div>
+
+    <div class="freq-label">染毛の頻度を選んでください</div>
+    <div class="freq-options">
+      <input type="radio" name="freq" id="freq1" value="1">
+      <label for="freq1">毎月</label>
+      <input type="radio" name="freq" id="freq1.5" value="1.5">
+      <label for="freq1.5">1.5ヶ月</label>
+      <input type="radio" name="freq" id="freq2" value="2" checked>
+      <label for="freq2">2ヶ月</label>
+      <input type="radio" name="freq" id="freq3" value="3">
+      <label for="freq3">3ヶ月</label>
+      <input type="radio" name="freq" id="freq4" value="4">
+      <label for="freq4">4ヶ月</label>
+      <input type="radio" name="freq" id="freq6" value="6">
+      <label for="freq6">半年</label>
+    </div>
+
     <button id="calcBtn">診断する</button>
   </div>
 </section>
@@ -519,16 +594,123 @@
 
 <script>
 const RISK_THRESHOLD = 150;
-const INTERVAL_MONTHS = 2;
 let animInterval = null;
 
+/* ===== 症状データ（SVGイラスト付き） ===== */
 const symptoms = [
-  { icon: '😣', title: '頭皮のかぶれ・炎症', desc: '頭皮が赤く腫れ、強い痛みやかゆみが生じます。水ぶくれができることもあります。' },
-  { icon: '😖', title: '顔面の腫れ', desc: '目の周り・額・頬が大きく腫れ上がり、別人のような顔になることがあります。' },
-  { icon: '🤧', title: '全身の蕁麻疹', desc: '頭皮だけでなく、全身に蕁麻疹が広がり、激しいかゆみが続きます。' },
-  { icon: '😰', title: '呼吸困難（アナフィラキシー）', desc: '重篤な場合、気道が腫れて呼吸困難に陥り、命に関わる危険があります。' },
-  { icon: '💧', title: '浸出液・ただれ', desc: '頭皮から液体がにじみ出し、かさぶたやただれが広範囲に生じます。' },
-  { icon: '🚫', title: '永続的な使用不可', desc: '一度発症すると一生ジアミン系染毛剤が使えなくなります。治ることはありません。' },
+  {
+    title: '頭皮のかぶれ・炎症',
+    desc: '頭皮が赤く腫れ、強い痛みやかゆみが生じます。水ぶくれができることもあります。',
+    svg: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><radialGradient id="s1g" cx="50%" cy="60%"><stop offset="0%" stop-color="#ffccbc"/><stop offset="100%" stop-color="#d4a08a"/></radialGradient></defs>' +
+      '<rect width="200" height="100" fill="#2a0a0a"/>' +
+      '<ellipse cx="100" cy="65" rx="50" ry="40" fill="url(#s1g)"/>' +
+      '<path d="M60,35 Q75,10 100,15 Q125,10 140,35" fill="#3a2a1a" stroke="#2a1a0a" stroke-width="2"/>' +
+      '<circle cx="82" cy="32" r="5" fill="#e74c3c" opacity=".7"/><circle cx="110" cy="28" r="7" fill="#e74c3c" opacity=".6"/><circle cx="95" cy="22" r="4" fill="#e74c3c" opacity=".8"/>' +
+      '<circle cx="120" cy="35" r="4" fill="#e74c3c" opacity=".5"/><circle cx="75" cy="25" r="3" fill="#c0392b" opacity=".7"/>' +
+      '<text x="100" y="95" text-anchor="middle" fill="#f5a5a5" font-size="10" font-family="sans-serif">頭皮に赤い炎症・水ぶくれ</text>' +
+      '</svg>'
+  },
+  {
+    title: '顔面の腫れ',
+    desc: '目の周り・額・頬が大きく腫れ上がり、別人のような顔になることがあります。',
+    svg: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="200" height="100" fill="#2a0a0a"/>' +
+      '<g transform="translate(40,0)">' +
+      '<ellipse cx="60" cy="50" rx="35" ry="40" fill="#d4a08a"/>' +
+      '<ellipse cx="60" cy="50" rx="42" ry="46" fill="#e88a7a" opacity=".4"/>' +
+      '<ellipse cx="47" cy="42" rx="10" ry="5" fill="#fff"/><ellipse cx="73" cy="42" rx="10" ry="5" fill="#fff"/>' +
+      '<circle cx="47" cy="42" r="3" fill="#333"/><circle cx="73" cy="42" r="3" fill="#333"/>' +
+      '<ellipse cx="47" cy="42" rx="14" ry="10" fill="#e74c3c" opacity=".35"/>' +
+      '<ellipse cx="73" cy="42" rx="14" ry="10" fill="#e74c3c" opacity=".35"/>' +
+      '<ellipse cx="40" cy="55" rx="10" ry="8" fill="#e74c3c" opacity=".3"/>' +
+      '<ellipse cx="80" cy="55" rx="10" ry="8" fill="#e74c3c" opacity=".3"/>' +
+      '<path d="M53,62 Q60,67 67,62" stroke="#a0522d" stroke-width="2" fill="none"/>' +
+      '</g>' +
+      '<text x="100" y="95" text-anchor="middle" fill="#f5a5a5" font-size="10" font-family="sans-serif">目・頬が大きく腫れ上がる</text>' +
+      '</svg>'
+  },
+  {
+    title: '全身の蕁麻疹',
+    desc: '頭皮だけでなく、全身に蕁麻疹が広がり、激しいかゆみが続きます。',
+    svg: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="200" height="100" fill="#2a0a0a"/>' +
+      '<g transform="translate(60,5)">' +
+      '<line x1="40" y1="0" x2="40" y2="15" stroke="#d4a08a" stroke-width="8" stroke-linecap="round"/>' +
+      '<circle cx="40" cy="0" r="10" fill="#d4a08a"/>' +
+      '<rect x="28" y="15" width="24" height="35" rx="6" fill="#d4a08a"/>' +
+      '<line x1="28" y1="22" x2="12" y2="42" stroke="#d4a08a" stroke-width="6" stroke-linecap="round"/>' +
+      '<line x1="52" y1="22" x2="68" y2="42" stroke="#d4a08a" stroke-width="6" stroke-linecap="round"/>' +
+      '<line x1="34" y1="50" x2="30" y2="72" stroke="#d4a08a" stroke-width="6" stroke-linecap="round"/>' +
+      '<line x1="46" y1="50" x2="50" y2="72" stroke="#d4a08a" stroke-width="6" stroke-linecap="round"/>' +
+      '<circle cx="35" cy="25" r="4" fill="#e74c3c" opacity=".7"/><circle cx="45" cy="35" r="3" fill="#e74c3c" opacity=".6"/>' +
+      '<circle cx="30" cy="42" r="3" fill="#e74c3c" opacity=".7"/><circle cx="50" cy="20" r="3.5" fill="#e74c3c" opacity=".5"/>' +
+      '<circle cx="18" cy="35" r="3" fill="#e74c3c" opacity=".6"/><circle cx="62" cy="38" r="2.5" fill="#e74c3c" opacity=".7"/>' +
+      '<circle cx="33" cy="60" r="3" fill="#e74c3c" opacity=".5"/><circle cx="48" cy="65" r="2.5" fill="#e74c3c" opacity=".6"/>' +
+      '<circle cx="42" cy="0" r="2" fill="#e74c3c" opacity=".5"/>' +
+      '</g>' +
+      '<text x="100" y="93" text-anchor="middle" fill="#f5a5a5" font-size="10" font-family="sans-serif">全身に赤い蕁麻疹が広がる</text>' +
+      '</svg>'
+  },
+  {
+    title: '呼吸困難（アナフィラキシー）',
+    desc: '重篤な場合、気道が腫れて呼吸困難に陥り、命に関わる危険があります。',
+    svg: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="200" height="100" fill="#2a0a0a"/>' +
+      '<g transform="translate(55,5)">' +
+      '<circle cx="45" cy="18" r="15" fill="#d4a08a"/>' +
+      '<ellipse cx="38" cy="16" rx="4" ry="3" fill="#fff"/><circle cx="38" cy="16" r="2" fill="#333"/>' +
+      '<ellipse cx="52" cy="16" rx="4" ry="3" fill="#fff"/><circle cx="52" cy="16" r="2" fill="#333"/>' +
+      '<path d="M40,24 Q45,28 50,24" stroke="#a0522d" stroke-width="2" fill="none"/>' +
+      '<path d="M38,36 L52,36 L48,55 L42,55 Z" fill="#d4a08a"/>' +
+      '<ellipse cx="45" cy="44" rx="12" ry="8" fill="#e74c3c" opacity=".3"/>' +
+      '</g>' +
+      '<path d="M115,35 Q125,30 130,35" stroke="#aaa" stroke-width="1.5" fill="none" opacity=".5"/>' +
+      '<path d="M120,30 Q130,24 136,30" stroke="#aaa" stroke-width="1.5" fill="none" opacity=".4"/>' +
+      '<path d="M125,25 Q134,18 140,25" stroke="#aaa" stroke-width="1.5" fill="none" opacity=".3"/>' +
+      '<text x="135" y="50" fill="#e74c3c" font-size="20" font-family="sans-serif" font-weight="bold">!</text>' +
+      '<text x="60" y="75" fill="#e74c3c" font-size="11" font-family="sans-serif" font-weight="bold">気道狭窄</text>' +
+      '<path d="M68,56 L72,56 L70,62 Z" fill="#e74c3c"/>' +
+      '<text x="100" y="93" text-anchor="middle" fill="#f5a5a5" font-size="10" font-family="sans-serif">気道が腫れ呼吸困難に</text>' +
+      '</svg>'
+  },
+  {
+    title: '浸出液・ただれ',
+    desc: '頭皮から液体がにじみ出し、かさぶたやただれが広範囲に生じます。',
+    svg: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><radialGradient id="s5g" cx="50%" cy="40%"><stop offset="0%" stop-color="#ffccbc"/><stop offset="100%" stop-color="#d4a08a"/></radialGradient></defs>' +
+      '<rect width="200" height="100" fill="#2a0a0a"/>' +
+      '<ellipse cx="100" cy="45" rx="55" ry="30" fill="url(#s5g)"/>' +
+      '<path d="M55,30 Q70,8 100,12 Q130,8 145,30" fill="#3a2a1a" stroke="#2a1a0a" stroke-width="2"/>' +
+      '<ellipse cx="88" cy="25" rx="10" ry="6" fill="#c0392b" opacity=".5"/>' +
+      '<ellipse cx="112" cy="22" rx="12" ry="7" fill="#c0392b" opacity=".4"/>' +
+      '<ellipse cx="98" cy="18" rx="8" ry="5" fill="#a0322b" opacity=".6"/>' +
+      '<path d="M90,31 Q92,40 89,45" stroke="#f0c060" stroke-width="2" fill="none" opacity=".7"/>' +
+      '<circle cx="89" cy="46" r="2.5" fill="#f0c060" opacity=".6"/>' +
+      '<path d="M115,28 Q117,36 114,42" stroke="#f0c060" stroke-width="2" fill="none" opacity=".6"/>' +
+      '<circle cx="114" cy="43" r="2" fill="#f0c060" opacity=".5"/>' +
+      '<path d="M102,22 Q103,30 101,36" stroke="#f0c060" stroke-width="1.5" fill="none" opacity=".5"/>' +
+      '<circle cx="101" cy="37" r="1.8" fill="#f0c060" opacity=".5"/>' +
+      '<text x="100" y="93" text-anchor="middle" fill="#f5a5a5" font-size="10" font-family="sans-serif">頭皮から浸出液がにじみ出る</text>' +
+      '</svg>'
+  },
+  {
+    title: '永続的な使用不可',
+    desc: '一度発症すると一生ジアミン系染毛剤が使えなくなります。治ることはありません。',
+    svg: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="200" height="100" fill="#2a0a0a"/>' +
+      '<rect x="55" y="15" width="40" height="55" rx="8" fill="#666"/>' +
+      '<rect x="60" y="20" width="30" height="22" rx="3" fill="#888"/>' +
+      '<text x="75" y="37" text-anchor="middle" fill="#aaa" font-size="8" font-family="sans-serif">ヘアカラー</text>' +
+      '<rect x="63" y="46" width="24" height="4" rx="2" fill="#555"/><rect x="63" y="53" width="18" height="4" rx="2" fill="#555"/>' +
+      '<line x1="50" y1="10" x2="100" y2="75" stroke="#e74c3c" stroke-width="5" stroke-linecap="round"/>' +
+      '<line x1="100" y1="10" x2="50" y2="75" stroke="#e74c3c" stroke-width="5" stroke-linecap="round"/>' +
+      '<circle cx="75" cy="42" r="33" fill="none" stroke="#e74c3c" stroke-width="4"/>' +
+      '<text x="140" y="35" fill="#e74c3c" font-size="22" font-family="sans-serif" font-weight="900">永久</text>' +
+      '<text x="140" y="55" fill="#e74c3c" font-size="22" font-family="sans-serif" font-weight="900">禁止</text>' +
+      '<text x="100" y="93" text-anchor="middle" fill="#f5a5a5" font-size="10" font-family="sans-serif">一生ジアミン系染毛剤は使用不可</text>' +
+      '</svg>'
+  },
 ];
 
 const advices = [
@@ -559,6 +741,18 @@ startAgeInput.addEventListener('keydown', (e) => {
 });
 resetBtn.addEventListener('click', resetApp);
 
+function getFreqMonths() {
+  const checked = document.querySelector('input[name="freq"]:checked');
+  return checked ? parseFloat(checked.value) : 2;
+}
+
+function getFreqLabel(months) {
+  if (months === 1) return '毎月';
+  if (months === 1.5) return '1.5ヶ月に1回';
+  if (months === 6) return '半年に1回';
+  return months + 'ヶ月に1回';
+}
+
 function resetApp() {
   if (animInterval) { clearInterval(animInterval); animInterval = null; }
   document.getElementById('resultSection').classList.remove('visible');
@@ -575,7 +769,8 @@ function startSimulation() {
     return;
   }
 
-  // 前のアニメーションをクリア
+  const freqMonths = getFreqMonths();
+
   if (animInterval) { clearInterval(animInterval); animInterval = null; }
 
   const section = document.getElementById('resultSection');
@@ -589,13 +784,12 @@ function startSimulation() {
   document.getElementById('symptomGrid').innerHTML = '';
   document.getElementById('adviceList').innerHTML = '';
 
-  // キーボードを閉じてスクロール
   startAgeInput.blur();
   setTimeout(() => {
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 100);
 
-  const riskAge = age + (RISK_THRESHOLD * INTERVAL_MONTHS) / 12;
+  const riskAge = age + (RISK_THRESHOLD * freqMonths) / 12;
   let count = 0;
   const counterEl = document.getElementById('counterNumber');
   const counterSub = document.getElementById('counterSub');
@@ -606,10 +800,10 @@ function startSimulation() {
   animInterval = setInterval(() => {
     count++;
     const pct = Math.min((count / RISK_THRESHOLD) * 100, 100);
-    const currentAge = age + (count * INTERVAL_MONTHS) / 12;
+    const currentAge = age + (count * freqMonths) / 12;
 
     counterEl.textContent = count;
-    counterSub.textContent = `（${currentAge.toFixed(1)} 歳 ・ 開始から ${((count * INTERVAL_MONTHS) / 12).toFixed(1)} 年）`;
+    counterSub.textContent = '（' + currentAge.toFixed(1) + ' 歳 ・ 開始から ' + ((count * freqMonths) / 12).toFixed(1) + ' 年）';
 
     bar.style.width = pct + '%';
     barText.textContent = Math.round(pct) + '%';
@@ -630,7 +824,7 @@ function startSimulation() {
     if (count >= RISK_THRESHOLD) {
       clearInterval(animInterval);
       animInterval = null;
-      showFinalWarning(age, riskAge);
+      showFinalWarning(age, riskAge, freqMonths);
     }
   }, 22);
 }
@@ -647,22 +841,20 @@ function addTimelineItem(ms, currentAge) {
   requestAnimationFrame(() => div.classList.add('show'));
 }
 
-function showFinalWarning(startAge, riskAge) {
-  // 画面フラッシュ
+function showFinalWarning(startAge, riskAge, freqMonths) {
   const flash = document.getElementById('flashOverlay');
   flash.classList.remove('active');
   void flash.offsetWidth;
   flash.classList.add('active');
   setTimeout(() => flash.classList.remove('active'), 650);
 
-  // バイブレーション（対応端末のみ）
   if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
 
-  // 最終警告
+  const freqLabel = getFreqLabel(freqMonths);
   const fa = document.getElementById('finalAlert');
   document.getElementById('ageResult').textContent = Math.round(riskAge) + ' 歳';
   document.getElementById('alertMessage').innerHTML =
-    startAge + ' 歳から2ヶ月に1回のヘアカラーを続けると、<br>' +
+    startAge + ' 歳から' + freqLabel + 'のヘアカラーを続けると、<br>' +
     '<strong>約 ' + Math.round(riskAge) + ' 歳で150回</strong>に到達します。<br>' +
     'この時点でジアミンアレルギーの発症リスクが<br>急激に高まると言われています。';
   setTimeout(() => {
@@ -670,7 +862,7 @@ function showFinalWarning(startAge, riskAge) {
     fa.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, 250);
 
-  // 症状カード
+  // 症状カード（イラスト付き）
   setTimeout(() => {
     const card = document.getElementById('warningCard');
     card.classList.add('show');
@@ -678,9 +870,11 @@ function showFinalWarning(startAge, riskAge) {
     symptoms.forEach((s, i) => {
       const div = document.createElement('div');
       div.className = 'symptom-item';
-      div.innerHTML = '<div class="icon">' + s.icon + '</div><h4>' + s.title + '</h4><p>' + s.desc + '</p>';
+      div.innerHTML =
+        '<div class="symptom-illust">' + s.svg + '</div>' +
+        '<div class="symptom-body"><h4>' + s.title + '</h4><p>' + s.desc + '</p></div>';
       grid.appendChild(div);
-      setTimeout(() => div.classList.add('show'), i * 160);
+      setTimeout(() => div.classList.add('show'), i * 180);
     });
   }, 1000);
 
