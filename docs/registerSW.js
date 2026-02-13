@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/diamine-allergy-warning/sw.js', { scope: '/diamine-allergy-warning/' })})}

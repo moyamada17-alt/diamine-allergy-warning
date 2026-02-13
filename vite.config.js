@@ -3,6 +3,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: '/diamine-allergy-warning/',
+  build: { outDir: 'docs' },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',

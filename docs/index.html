@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#e74c3c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="ヘアカラーによるジアミンアレルギーの発症リスクを可視化するアプリ">
+<link rel="icon" type="image/svg+xml" href="/diamine-allergy-warning/favicon.svg">
+<link rel="apple-touch-icon" href="/diamine-allergy-warning/favicon.svg">
+<title>ジアミンアレルギー発症リスク警告</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --red: #e74c3c;
+    --dark-red: #c0392b;
+    --bg: #1a1a2e;
+    --card-bg: #16213e;
+    --border: #2a2a4a;
+    --safe-env-top: env(safe-area-inset-top, 0px);
+    --safe-env-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans',
+                 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Segoe UI',
+                 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: #eee;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-bottom: var(--safe-env-bottom);
+  }
+
+  /* ===== ヘッダー ===== */
+  header {
+    background: linear-gradient(135deg, var(--red), var(--dark-red));
+    text-align: center;
+    padding: calc(20px + var(--safe-env-top)) 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      45deg, transparent, transparent 20px,
+      rgba(0,0,0,.08) 20px, rgba(0,0,0,.08) 40px
+    );
+  }
+  header h1 {
+    font-size: clamp(1.2rem, 5vw, 2rem);
+    position: relative;
+    text-shadow: 2px 2px 4px rgba(0,0,0,.4);
+    line-height: 1.4;
+  }
+  header p {
+    margin-top: 6px;
+    font-size: clamp(.8rem, 3vw, .95rem);
+    opacity: .9;
+    position: relative;
+  }
+
+  /* ===== 入力セクション ===== */
+  .input-section {
+    max-width: 520px;
+    margin: 28px auto;
+    padding: 0 16px;
+    text-align: center;
+  }
+  .input-section label {
+    font-size: clamp(.95rem, 3.5vw, 1.15rem);
+    display: block;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .input-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .input-row input[type="number"] {
+    width: 90px;
+    padding: 14px 8px;
+    font-size: 1.5rem;
+    text-align: center;
+    border: 2px solid var(--red);
+    border-radius: 12px;
+    background: var(--card-bg);
+    color: #fff;
+    outline: none;
+    transition: border-color .3s, box-shadow .3s;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+  }
+  .input-row input:focus {
+    border-color: #f39c12;
+    box-shadow: 0 0 0 3px rgba(243,156,18,.25);
+  }
+  .input-row .unit { font-size: 1.1rem; }
+  .input-row button {
+    padding: 14px 24px;
+    font-size: clamp(1rem, 3.5vw, 1.1rem);
+    background: linear-gradient(135deg, var(--red), var(--dark-red));
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .input-row button:hover,
+  .input-row button:active {
+    transform: scale(1.04);
+    box-shadow: 0 4px 20px rgba(231,76,60,.45);
+  }
+
+  /* ===== 結果セクション ===== */
+  .result-section {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 16px 20px;
+    display: none;
+  }
+  .result-section.visible { display: block; }
+
+  /* カウンター */
+  .counter-area {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .counter-label {
+    font-size: clamp(.85rem, 3vw, 1rem);
+    color: #aaa;
+    margin-bottom: 4px;
+  }
+  .counter-number {
+    font-size: clamp(2.8rem, 10vw, 3.5rem);
+    font-weight: 900;
+    color: var(--red);
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+  .counter-sub {
+    font-size: clamp(.78rem, 2.8vw, .95rem);
+    color: #ccc;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* プログレスバー */
+  .progress-wrap {
+    background: var(--card-bg);
+    border-radius: 14px;
+    height: 32px;
+    overflow: hidden;
+    margin: 16px 0;
+    position: relative;
+    border: 1px solid var(--border);
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 14px;
+    transition: width .08s linear;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+    min-width: 40px;
+  }
+  .progress-bar.safe    { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+  .progress-bar.caution { background: linear-gradient(90deg, #f39c12, #e67e22); }
+  .progress-bar.danger  { background: linear-gradient(90deg, var(--red), var(--dark-red)); }
+  .progress-text {
+    font-size: .8rem;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0,0,0,.6);
+    white-space: nowrap;
+  }
+
+  /* タイムライン */
+  .timeline {
+    position: relative;
+    padding-left: 30px;
+    margin: 24px 0 10px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 18px;
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  .timeline-item.show {
+    animation: slideIn .45s forwards;
+  }
+  .timeline-item .dot {
+    position: absolute;
+    left: -27px;
+    top: 3px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 3px solid;
+  }
+  .timeline-item .dot.green  { border-color: #2ecc71; background: var(--card-bg); }
+  .timeline-item .dot.yellow { border-color: #f39c12; background: var(--card-bg); }
+  .timeline-item .dot.red    { border-color: var(--red); background: var(--red); }
+  .timeline-item h3 {
+    font-size: clamp(.88rem, 3vw, 1.02rem);
+    line-height: 1.4;
+  }
+  .timeline-item p {
+    font-size: clamp(.78rem, 2.5vw, .88rem);
+    color: #aaa;
+    margin-top: 2px;
+  }
+
+  @keyframes slideIn {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* 警告カード */
+  .warning-card {
+    background: linear-gradient(135deg, #4a1a1a, #2a0a0a);
+    border: 2px solid var(--red);
+    border-radius: 16px;
+    padding: 24px 16px;
+    margin-top: 28px;
+    opacity: 0;
+    transform: scale(.92);
+  }
+  .warning-card.show {
+    animation: popIn .6s forwards;
+  }
+  @keyframes popIn {
+    50%  { transform: scale(1.02); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .warning-card h2 {
+    color: var(--red);
+    font-size: clamp(1.05rem, 4vw, 1.3rem);
+    margin-bottom: 16px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .symptom-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 480px) {
+    .symptom-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  .symptom-item {
+    background: rgba(231,76,60,.1);
+    border-radius: 12px;
+    padding: 14px;
+    border-left: 4px solid var(--red);
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .symptom-item.show {
+    animation: fadeUp .4s forwards;
+  }
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .symptom-item .icon {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+  .symptom-item h4 {
+    font-size: clamp(.88rem, 3vw, .95rem);
+    color: #f5a5a5;
+    margin-bottom: 4px;
+  }
+  .symptom-item p {
+    font-size: clamp(.78rem, 2.5vw, .85rem);
+    color: #bbb;
+    line-height: 1.6;
+  }
+
+  /* 最終警告 */
+  .final-alert {
+    text-align: center;
+    margin-top: 28px;
+    padding: 20px 16px;
+    border-radius: 16px;
+    background: rgba(231,76,60,.08);
+    border: 2px dashed var(--red);
+    opacity: 0;
+  }
+  .final-alert.show {
+    animation: pulseIn .7s forwards;
+  }
+  @keyframes pulseIn {
+    0%   { opacity: 0; transform: scale(.9); }
+    60%  { transform: scale(1.02); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .final-alert .age-result {
+    font-size: clamp(2.4rem, 10vw, 3.2rem);
+    font-weight: 900;
+    color: var(--red);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .45; }
+  }
+  .final-alert p {
+    margin-top: 10px;
+    font-size: clamp(.88rem, 3vw, 1rem);
+    color: #ccc;
+    line-height: 1.8;
+  }
+
+  /* 対策セクション */
+  .advice-card {
+    background: linear-gradient(135deg, #0a2a1a, #0a1a2a);
+    border: 2px solid #2ecc71;
+    border-radius: 16px;
+    padding: 24px 16px;
+    margin-top: 28px;
+    opacity: 0;
+    transform: scale(.92);
+  }
+  .advice-card.show {
+    animation: popIn .6s forwards;
+  }
+  .advice-card h2 {
+    color: #2ecc71;
+    font-size: clamp(1.05rem, 4vw, 1.3rem);
+    margin-bottom: 16px;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .advice-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .advice-list li {
+    background: rgba(46,204,113,.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    border-left: 4px solid #2ecc71;
+    font-size: clamp(.82rem, 2.8vw, .92rem);
+    line-height: 1.6;
+    color: #ccc;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .advice-list li.show {
+    animation: fadeUp .4s forwards;
+  }
+  .advice-list li strong {
+    color: #6fdc9f;
+  }
+
+  /* 注意書き */
+  .note {
+    max-width: 600px;
+    margin: 32px auto 24px;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    font-size: clamp(.7rem, 2.3vw, .78rem);
+    color: #888;
+    line-height: 1.8;
+    text-align: center;
+  }
+
+  /* フッター */
+  footer {
+    text-align: center;
+    padding: 16px;
+    font-size: .72rem;
+    color: #555;
+    padding-bottom: calc(16px + var(--safe-env-bottom));
+  }
+
+  /* シェイク */
+  .shake { animation: shake .5s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-8px); }
+    40%     { transform: translateX(8px); }
+    60%     { transform: translateX(-5px); }
+    80%     { transform: translateX(5px); }
+  }
+
+  /* 画面フラッシュ */
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--red);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .flash-overlay.active {
+    animation: flash .6s;
+  }
+  @keyframes flash {
+    0%   { opacity: .55; }
+    100% { opacity: 0; }
+  }
+
+  /* リセットボタン */
+  .reset-btn {
+    display: block;
+    margin: 28px auto 0;
+    padding: 12px 32px;
+    font-size: .95rem;
+    background: transparent;
+    color: #888;
+    border: 1px solid #444;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+    touch-action: manipulation;
+  }
+  .reset-btn:hover,
+  .reset-btn:active {
+    color: #eee;
+    border-color: #888;
+  }
+</style>
+<link rel="manifest" href="/diamine-allergy-warning/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/diamine-allergy-warning/registerSW.js"></script></head>
+<body>
+
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<header>
+  <h1>⚠️ ジアミンアレルギー警告 ⚠️</h1>
+  <p>ヘアカラーに潜む見えないリスクを可視化</p>
+</header>
+
+<section class="input-section" id="inputSection">
+  <label>毛染めを始めた年齢（または始める予定の年齢）を<br>入力してください</label>
+  <div class="input-row">
+    <input type="number" id="startAge" inputmode="numeric" pattern="[0-9]*"
+           min="10" max="80" placeholder="25" enterkeyhint="go">
+    <span class="unit">歳</span>
+    <button id="calcBtn">診断する</button>
+  </div>
+</section>
+
+<section class="result-section" id="resultSection">
+  <div class="counter-area">
+    <div class="counter-label">累計ヘアカラー回数</div>
+    <div class="counter-number" id="counterNumber">0</div>
+    <div class="counter-sub" id="counterSub"></div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar safe" id="progressBar">
+      <span class="progress-text" id="progressText"></span>
+    </div>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+
+  <div class="final-alert" id="finalAlert">
+    <div class="age-result" id="ageResult"></div>
+    <p id="alertMessage"></p>
+  </div>
+
+  <div class="warning-card" id="warningCard">
+    <h2>🚨 ジアミンアレルギーの主な症状 🚨</h2>
+    <div class="symptom-grid" id="symptomGrid"></div>
+  </div>
+
+  <div class="advice-card" id="adviceCard">
+    <h2>💡 リスクを減らすために</h2>
+    <ul class="advice-list" id="adviceList"></ul>
+  </div>
+
+  <button class="reset-btn" id="resetBtn">もう一度診断する</button>
+</section>
+
+<div class="note">
+  ※ 本アプリの情報は一般的な見解に基づくものであり、医学的診断ではありません。<br>
+  ※「150回以降にリスクが高まる」という説に基づいた目安です。<br>
+  ※ 個人差があり、少ない回数でも発症する場合があります。<br>
+  ※ 異常を感じたら必ず皮膚科医にご相談ください。
+</div>
+
+<footer>Hair Dye Allergy Risk Warning App</footer>
+
+<script>
+const RISK_THRESHOLD = 150;
+const INTERVAL_MONTHS = 2;
+let animInterval = null;
+
+const symptoms = [
+  { icon: '😣', title: '頭皮のかぶれ・炎症', desc: '頭皮が赤く腫れ、強い痛みやかゆみが生じます。水ぶくれができることもあります。' },
+  { icon: '😖', title: '顔面の腫れ', desc: '目の周り・額・頬が大きく腫れ上がり、別人のような顔になることがあります。' },
+  { icon: '🤧', title: '全身の蕁麻疹', desc: '頭皮だけでなく、全身に蕁麻疹が広がり、激しいかゆみが続きます。' },
+  { icon: '😰', title: '呼吸困難（アナフィラキシー）', desc: '重篤な場合、気道が腫れて呼吸困難に陥り、命に関わる危険があります。' },
+  { icon: '💧', title: '浸出液・ただれ', desc: '頭皮から液体がにじみ出し、かさぶたやただれが広範囲に生じます。' },
+  { icon: '🚫', title: '永続的な使用不可', desc: '一度発症すると一生ジアミン系染毛剤が使えなくなります。治ることはありません。' },
+];
+
+const advices = [
+  { text: '<strong>パッチテストを毎回行う</strong> — 染毛の48時間前に腕の内側で必ずテストしましょう。' },
+  { text: '<strong>ジアミンフリーの染毛剤を選ぶ</strong> — ヘナ、ヘアマニキュア、カラートリートメントなど代替品があります。' },
+  { text: '<strong>染毛の頻度を減らす</strong> — リタッチ（根元のみ）にして全体染めの回数を減らしましょう。' },
+  { text: '<strong>頭皮に薬剤をつけない</strong> — 美容師に「頭皮につけないで」と伝えましょう。' },
+  { text: '<strong>異変を感じたらすぐ中止</strong> — 少しでもかゆみ・赤みが出たら、その後の使用をやめて皮膚科へ。' },
+];
+
+const milestones = [
+  { count: 1,   label: '初めてのヘアカラー', color: 'green' },
+  { count: 30,  label: '30回目 — まだ安全圏ですが蓄積は始まっています', color: 'green' },
+  { count: 60,  label: '60回目 — 体内の感作が進行中', color: 'green' },
+  { count: 100, label: '100回目 — 注意ゾーンに突入', color: 'yellow' },
+  { count: 130, label: '130回目 — 危険が迫っています', color: 'yellow' },
+  { count: 150, label: '150回目 — 発症リスクが急激に高まる!', color: 'red' },
+];
+
+// イベント設定
+const calcBtn = document.getElementById('calcBtn');
+const startAgeInput = document.getElementById('startAge');
+const resetBtn = document.getElementById('resetBtn');
+
+calcBtn.addEventListener('click', startSimulation);
+startAgeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startSimulation();
+});
+resetBtn.addEventListener('click', resetApp);
+
+function resetApp() {
+  if (animInterval) { clearInterval(animInterval); animInterval = null; }
+  document.getElementById('resultSection').classList.remove('visible');
+  document.getElementById('inputSection').scrollIntoView({ behavior: 'smooth' });
+  startAgeInput.value = '';
+  startAgeInput.focus();
+}
+
+function startSimulation() {
+  const age = parseInt(startAgeInput.value, 10);
+  if (isNaN(age) || age < 1 || age > 100) {
+    startAgeInput.classList.add('shake');
+    setTimeout(() => startAgeInput.classList.remove('shake'), 500);
+    return;
+  }
+
+  // 前のアニメーションをクリア
+  if (animInterval) { clearInterval(animInterval); animInterval = null; }
+
+  const section = document.getElementById('resultSection');
+  section.classList.add('visible');
+
+  // リセット
+  document.getElementById('timeline').innerHTML = '';
+  document.getElementById('finalAlert').classList.remove('show');
+  document.getElementById('warningCard').classList.remove('show');
+  document.getElementById('adviceCard').classList.remove('show');
+  document.getElementById('symptomGrid').innerHTML = '';
+  document.getElementById('adviceList').innerHTML = '';
+
+  // キーボードを閉じてスクロール
+  startAgeInput.blur();
+  setTimeout(() => {
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+
+  const riskAge = age + (RISK_THRESHOLD * INTERVAL_MONTHS) / 12;
+  let count = 0;
+  const counterEl = document.getElementById('counterNumber');
+  const counterSub = document.getElementById('counterSub');
+  const bar = document.getElementById('progressBar');
+  const barText = document.getElementById('progressText');
+  let msIdx = 0;
+
+  animInterval = setInterval(() => {
+    count++;
+    const pct = Math.min((count / RISK_THRESHOLD) * 100, 100);
+    const currentAge = age + (count * INTERVAL_MONTHS) / 12;
+
+    counterEl.textContent = count;
+    counterSub.textContent = `（${currentAge.toFixed(1)} 歳 ・ 開始から ${((count * INTERVAL_MONTHS) / 12).toFixed(1)} 年）`;
+
+    bar.style.width = pct + '%';
+    barText.textContent = Math.round(pct) + '%';
+
+    if (pct < 60) {
+      bar.className = 'progress-bar safe';
+    } else if (pct < 90) {
+      bar.className = 'progress-bar caution';
+    } else {
+      bar.className = 'progress-bar danger';
+    }
+
+    if (msIdx < milestones.length && count === milestones[msIdx].count) {
+      addTimelineItem(milestones[msIdx], currentAge);
+      msIdx++;
+    }
+
+    if (count >= RISK_THRESHOLD) {
+      clearInterval(animInterval);
+      animInterval = null;
+      showFinalWarning(age, riskAge);
+    }
+  }, 22);
+}
+
+function addTimelineItem(ms, currentAge) {
+  const tl = document.getElementById('timeline');
+  const div = document.createElement('div');
+  div.className = 'timeline-item';
+  div.innerHTML =
+    '<div class="dot ' + ms.color + '"></div>' +
+    '<h3>' + ms.label + '</h3>' +
+    '<p>' + currentAge.toFixed(0) + ' 歳時点</p>';
+  tl.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('show'));
+}
+
+function showFinalWarning(startAge, riskAge) {
+  // 画面フラッシュ
+  const flash = document.getElementById('flashOverlay');
+  flash.classList.remove('active');
+  void flash.offsetWidth;
+  flash.classList.add('active');
+  setTimeout(() => flash.classList.remove('active'), 650);
+
+  // バイブレーション（対応端末のみ）
+  if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+
+  // 最終警告
+  const fa = document.getElementById('finalAlert');
+  document.getElementById('ageResult').textContent = Math.round(riskAge) + ' 歳';
+  document.getElementById('alertMessage').innerHTML =
+    startAge + ' 歳から2ヶ月に1回のヘアカラーを続けると、<br>' +
+    '<strong>約 ' + Math.round(riskAge) + ' 歳で150回</strong>に到達します。<br>' +
+    'この時点でジアミンアレルギーの発症リスクが<br>急激に高まると言われています。';
+  setTimeout(() => {
+    fa.classList.add('show');
+    fa.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 250);
+
+  // 症状カード
+  setTimeout(() => {
+    const card = document.getElementById('warningCard');
+    card.classList.add('show');
+    const grid = document.getElementById('symptomGrid');
+    symptoms.forEach((s, i) => {
+      const div = document.createElement('div');
+      div.className = 'symptom-item';
+      div.innerHTML = '<div class="icon">' + s.icon + '</div><h4>' + s.title + '</h4><p>' + s.desc + '</p>';
+      grid.appendChild(div);
+      setTimeout(() => div.classList.add('show'), i * 160);
+    });
+  }, 1000);
+
+  // 対策カード
+  setTimeout(() => {
+    const card = document.getElementById('adviceCard');
+    card.classList.add('show');
+    const list = document.getElementById('adviceList');
+    advices.forEach((a, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = a.text;
+      list.appendChild(li);
+      setTimeout(() => li.classList.add('show'), i * 150);
+    });
+  }, 2200);
+}
+</script>
+</body>
+</html>
